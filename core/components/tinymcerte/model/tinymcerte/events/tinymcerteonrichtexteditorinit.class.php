@@ -18,10 +18,12 @@ class TinyMCERTEOnRichTextEditorInit extends TinyMCERTEPlugin {
     }
 
     private function initTinyMCE() {
-        $this->modx->regClientStartupScript($this->tinymcerte->getOption('jsUrl') . 'vendor/tinymce/tinymce.min.js');
-        $this->modx->regClientStartupScript($this->tinymcerte->getOption('jsUrl') . 'mgr/tinymcerte.js');
+        $this->modx->controller->addJavascript($this->tinymcerte->getOption('jsUrl') . 'vendor/tinymce/tinymce.min.js');
+        $this->modx->controller->addJavascript($this->tinymcerte->getOption('jsUrl') . 'vendor/autocomplete.js');
+        $this->modx->controller->addJavascript($this->tinymcerte->getOption('jsUrl') . 'mgr/tinymcerte.js');
 
         return '<script type="text/javascript">
+            Ext.ns("TinyMCERTE");
             TinyMCERTE.editorConfig = ' . $this->modx->toJSON($this->getTinyConfig()) . ';
 
             Ext.onReady(function(){
@@ -45,10 +47,11 @@ class TinyMCERTEOnRichTextEditorInit extends TinyMCERTEPlugin {
         }
 
         $config = array(
-            'plugins' => $this->tinymcerte->getOption('plugins', array(), 'advlist autolink lists link image charmap print preview anchor visualblocks searchreplace code fullscreen insertdatetime media table contextmenu paste'),
+            'plugins' => $this->tinymcerte->getOption('plugins', array(), 'advlist autolink lists link modximage charmap print preview anchor visualblocks searchreplace code fullscreen insertdatetime media table contextmenu paste modxlink'),
             'toolbar1' => $this->tinymcerte->getOption('toolbar1', array(), 'undo redo | styleselect | bold italic | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image'),
             'toolbar2' => $this->tinymcerte->getOption('toolbar2', array(), ''),
             'toolbar3' => $this->tinymcerte->getOption('toolbar3', array(), ''),
+            'modxlinkSearch' => $this->tinymcerte->getOption('jsUrl').'vendor/tinymce/plugins/modxlink/search.php',
             'language' => $language,
             'directionality' => $this->modx->getOption('manager_direction', array(), 'ltr'),
             'menubar' => $this->tinymcerte->getOption('menubar', array(), 'file edit insert view format table tools'),
@@ -61,6 +64,9 @@ class TinyMCERTEOnRichTextEditorInit extends TinyMCERTEPlugin {
             'browser_spellcheck' => $this->tinymcerte->getOption('browser_spellcheck', array(), false) == 1,
             'content_css' => $this->tinymcerte->explodeAndClean($this->tinymcerte->getOption('content_css', array(), '')),
             'image_class_list' => $this->modx->fromJSON($this->tinymcerte->getOption('image_class_list', array(), '[]')),
+            'skin' => $this->tinymcerte->getOption('skin', array(), 'modx'),
+            'relative_urls' => $this->tinymcerte->getOption('relative_urls', array(), true) == 1,
+            'remove_script_host'=> $this->tinymcerte->getOption('remove_script_host', array(), true) == 1,
         );
 
         $styleFormats = $this->tinymcerte->getOption('style_formats', array(), '[]');
@@ -83,6 +89,21 @@ class TinyMCERTEOnRichTextEditorInit extends TinyMCERTEPlugin {
 
         if (!empty($finalFormats)) {
             $config['style_formats'] = $finalFormats;
+        }
+
+        $externalConfig = $this->tinymcerte->getOption('external_config');
+        if (!empty($externalConfig)) {
+            $externalConfig = str_replace('{base_path}', $this->modx->getOption('base_path'), $externalConfig);
+            $externalConfig = str_replace('{core_path}', $this->modx->getOption('core_path'), $externalConfig);
+            $externalConfig = str_replace('{assets_path}', $this->modx->getOption('assets_path'), $externalConfig);
+            
+            if (file_exists($externalConfig) && is_readable($externalConfig)) {
+                $externalConfig = file_get_contents($externalConfig);
+                $externalConfig = $this->modx->fromJSON($externalConfig);
+                if (is_array($externalConfig)) {
+                    $config = array_merge($config, $externalConfig);
+                }
+            }
         }
 
         return $config;
